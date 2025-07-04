@@ -1,0 +1,25 @@
+{
+  "name": "solid-dirnav-ui",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/solid-dirnav-ui.umd.js",
+  "module": "dist/solid-dirnav-ui.es.js",
+  "scripts": {
+    "build": "vite build",
+    "test": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "solid-js": "^1.9.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.2",
+    "playwright": "^1.53.2",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-solid": "^2.11.7"
+  }
+}

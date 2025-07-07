@@ -11,33 +11,30 @@ interface CommandPaletteProps {
 
 const CommandPalette: Component<CommandPaletteProps> = (props) => {
   return (
-    <div>
+    <div id="command-palette">
       <input
+        id="command-palette-input"
         ref={props.commandPaletteInputRef}
         type="text"
         placeholder="Search..."
         value={props.searchTerm()}
         onInput={(e) => props.setSearchTerm(e.currentTarget.value)}
-        style={{ width: '100%', padding: '5px', 'margin-bottom': '10px' }}
       />
       <Show when={props.searchResults().length > 0}>
-        <div style={{ 'max-height': '200px', 'overflow-y': 'auto', 'border': '1px solid #eee' }}>
+        <ul id="command-palette-results">
           <For each={props.searchResults()}>{(item, index) => (
-            <div
-              style={{
-                padding: '5px',
-                cursor: 'pointer',
-                'background-color': props.selectedSearchResultIndex() === index() ? '#f0f0f0' : 'transparent',
-              }}
+            <li
+              id={`command-palette-result-${index()}`}
+              class="command-palette-result"
               onClick={() => props.onSelect(item)}
             >
-              {item.name} <span style={{ color: '#888', 'font-size': '0.8em' }}>({item.fullPath})</span>
-            </div>
+              {item.name} <span class="command-palette-result-path">({item.fullPath})</span>
+            </li>
           )}</For>
-        </div>
+        </ul>
       </Show>
       <Show when={props.searchResults().length === 0 && props.searchTerm().length > 0}>
-        <p>No results found.</p>
+        <p id="command-palette-no-results">No results found.</p>
       </Show>
     </div>
   );

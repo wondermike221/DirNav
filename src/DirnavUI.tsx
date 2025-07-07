@@ -89,6 +89,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
   let dirnavWindowRef: HTMLDivElement | undefined; // Ref for the Window component's root div
   let inputRef: HTMLInputElement | undefined; // Ref for the input element
   let commandPaletteInputRef: HTMLInputElement | undefined; // Ref for the command palette input
+  let focusWindow: () => void;
 
   const applyComponentTheme = (theme: 'light' | 'dark' | 'system') => {
     setComponentThemePreference(theme);
@@ -348,12 +349,12 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
     if (event.ctrlKey && event.key === '`') {
       if (!isVisible()) {
         setIsVisible(true);
-        setTimeout(() => dirnavWindowRef?.focus(), 0);
+        setTimeout(() => focusWindow(), 0);
       } else if (isCurrentlyFocused) {
         setIsVisible(false);
         dirnavWindowRef?.blur();
       } else {
-        dirnavWindowRef?.focus();
+        focusWindow();
       }
       return; // Consume the event here to prevent further processing
     }
@@ -494,10 +495,13 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
   };
 
   createEffect(() => {
-    if (inputMode() && inputRef) {
-      inputRef.focus();
+    if (inputMode()) {
+      inputRef?.focus();
+    } else if (commandPaletteMode()) {
+      commandPaletteInputRef?.focus();
+    } else {
+      focusWindow();
     }
-    // No need for else if here, as commandPaletteInputRef is handled by onInput
   });
 
   onMount(() => {
@@ -517,105 +521,104 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
           ref={dirnavWindowRef} // Assign ref to the Window component
           onClose={() => setIsVisible(false)} // Pass the close handler
           componentThemeClass={getComponentThemeClass()} // Pass the theme class
+          focus={(f) => focusWindow = f}
         >
-          <div style={{ padding: '10px' }}>
-            <Show when={isLoading()}>
-              <p>Loading...</p>
-            </Show>
-            <Show when={commandPaletteMode()}>
-              <CommandPalette
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                searchResults={searchResults}
-                selectedSearchResultIndex={selectedSearchResultIndex}
-                onSelect={(item) => {
-                  // This click handler will need to trigger navigation/action
-                  // For now, just log and exit command palette mode
-                  const selectedNode = item;
-                  if (selectedNode) {
-                    if (selectedNode.fullPath.startsWith('meta/')) {
-                      if (selectedNode.action) {
-                        selectedNode.action();
-                      }
-                      // After executing a meta action, reset to root
-                      setCurrentPath([]);
-                      setCurrentDirContent(props.initialTree);
-                      setCurrentPage(0);
-                    } else {
-                      const { node: foundNode, parentContent, parentPath } = findNodeAndParent(props.initialTree, selectedNode.fullPath);
-
-                      if (foundNode && parentContent) {
-                        setHistory([]); // Clear history to start fresh from root for command palette navigation
-                        setCurrentPath(parentPath);
-                        setCurrentDirContent(parentContent);
-                        setCurrentPage(0);
-
-                        // If the selected node is an action, execute it
-                        if (foundNode.type === 'action' && foundNode.action) {
-                          foundNode.action();
-                        }
-
-                        // If the selected node is an input, activate input mode
-                        if (foundNode.type === 'input') {
-                          setInputMode(true);
-                          setInputNodeName(foundNode.name);
-                          setInputValue(localStorage.getItem(foundNode.localStorageKey || '') || '');
-                        }
-
-                        setTimeout(() => {
-                          // After executing a command palette action, return to the root directory
-                          // unless it's an input node, in which case we stay in input mode
-                          if (!inputMode()) { // Only reset if not entering input mode
-                            setCurrentPath([]);
-                            setCurrentDirContent(props.initialTree);
-                            setCurrentPage(0);
-                            dirnavWindowRef?.focus();
-                          }
-                        }, 0); // Small delay to allow UI to render the new directory
-
-                      } else {
-                        console.error("Could not find selected node in tree:", selectedNode);
-                      }
+          <Show when={isLoading()}>
+            <p>Loading...</p>
+          </Show>
+          <Show when={commandPaletteMode()}>
+            <CommandPalette
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              searchResults={searchResults}
+              selectedSearchResultIndex={selectedSearchResultIndex}
+              onSelect={(item) => {
+                // This click handler will need to trigger navigation/action
+                // For now, just log and exit command palette mode
+                const selectedNode = item;
+                if (selectedNode) {
+                  if (selectedNode.fullPath.startsWith('meta/')) {
+                    if (selectedNode.action) {
+                      selectedNode.action();
                     }
+                    // After executing a meta action, reset to root
+                    setCurrentPath([]);
+                    setCurrentDirContent(props.initialTree);
+                    setCurrentPage(0);
+                  } else {
+                    const { node: foundNode, parentContent, parentPath } = findNodeAndParent(props.initialTree, selectedNode.fullPath);
 
-                    setCommandPaletteMode(false);
-                    setSearchTerm('');
-                    setSearchResults([]);
-                    setSelectedSearchResultIndex(0);
-                    // Focus will be handled by createEffect if inputMode is true, otherwise focus the window
-                    if (!inputMode()) { // Only focus window if not entering input mode
-                      dirnavWindowRef?.focus();
+                    if (foundNode && parentContent) {
+                      setHistory([]); // Clear history to start fresh from root for command palette navigation
+                      setCurrentPath(parentPath);
+                      setCurrentDirContent(parentContent);
+                      setCurrentPage(0);
+
+                      // If the selected node is an action, execute it
+                      if (foundNode.type === 'action' && foundNode.action) {
+                        foundNode.action();
+                      }
+
+                      // If the selected node is an input, activate input mode
+                      if (foundNode.type === 'input') {
+                        setInputMode(true);
+                        setInputNodeName(foundNode.name);
+                        setInputValue(localStorage.getItem(foundNode.localStorageKey || '') || '');
+                      }
+
+                      setTimeout(() => {
+                        // After executing a command palette action, return to the root directory
+                        // unless it's an input node, in which case we stay in input mode
+                        if (!inputMode()) { // Only reset if not entering input mode
+                          setCurrentPath([]);
+                          setCurrentDirContent(props.initialTree);
+                          setCurrentPage(0);
+                          dirnavWindowRef?.focus();
+                        }
+                      }, 0); // Small delay to allow UI to render the new directory
+
+                    } else {
+                      console.error("Could not find selected node in tree:", selectedNode);
                     }
                   }
-                }}
-                commandPaletteInputRef={commandPaletteInputRef}
+
+                  setCommandPaletteMode(false);
+                  setSearchTerm('');
+                  setSearchResults([]);
+                  setSelectedSearchResultIndex(0);
+                  // Focus will be handled by createEffect if inputMode is true, otherwise focus the window
+                  if (!inputMode()) { // Only focus window if not entering input mode
+                    dirnavWindowRef?.focus();
+                  }
+                }
+              }}
+              commandPaletteInputRef={commandPaletteInputRef}
+            />
+          </Show>
+          <Show when={inputMode()}>
+            <div id="input-mode-container">
+              <p>Enter value for {inputNodeName()}:</p>
+              <input
+                id="input-mode-input"
+                ref={inputRef}
+                type="text"
+                value={inputValue()}
+                onInput={(e) => setInputValue(e.currentTarget.value)}
               />
-            </Show>
-            <Show when={inputMode()}>
-              <div>
-                <p>Enter value for {inputNodeName()}:</p>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue()}
-                  onInput={(e) => setInputValue(e.currentTarget.value)}
-                  style={{ width: '100%', padding: '5px' }}
-                />
-                <div style={{ 'margin-top': '10px', 'text-align': 'right' }}>
-                  <button onClick={handleCancelInput} style={{ 'margin-right': '10px' }}>Cancel</button>
-                  <button onClick={handleSaveInput}>Save</button>
-                </div>
+              <div id="input-mode-controls">
+                <button id="input-mode-cancel-button" onClick={handleCancelInput}>Cancel</button>
+                <button id="input-mode-save-button" onClick={handleSaveInput}>Save</button>
               </div>
-            </Show>
-            <Show when={!isLoading() && !inputMode() && !commandPaletteMode()}>
-              <MainNav
-                paginatedItems={paginatedItems}
-                totalPages={totalPages}
-                currentPage={currentPage}
-                handleNavigate={handleNavigate}
-              />
-            </Show>
-          </div>
+            </div>
+          </Show>
+          <Show when={!isLoading() && !inputMode() && !commandPaletteMode()}>
+            <MainNav
+              paginatedItems={paginatedItems}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              handleNavigate={handleNavigate}
+            />
+          </Show>
         </Window>
       </Show>
     </TitleContext.Provider>

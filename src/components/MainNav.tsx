@@ -13,34 +13,27 @@ const MainNav: Component<MainNavProps> = (props) => {
       <Show when={props.paginatedItems().length === 0}>
         <p>This directory is empty.</p>
       </Show>
-      <For each={props.paginatedItems()}>{(item, index) => (
-        <div
-          style={{
-            padding: '5px 0',
-            cursor: 'pointer',
-            'border-bottom': '1px solid #eee',
-          }}
-          onClick={() => props.handleNavigate(item[0], item[1].type)}
-        >
-          {index() + 1}. {item[1].name}
-          {item[1].type === 'directory' ? '/' : ''}
-          {item[1].type === 'input' && item[1].localStorageKey ? ` (Current: ${localStorage.getItem(item[1].localStorageKey) || ''})` : ''}
-        </div>
-      )}</For>
+      <ol id="main-nav-list">
+        <For each={props.paginatedItems()}>{(item, index) => (
+          <li
+            id={`main-nav-item-${index()}`}
+            class="main-nav-item"
+          >
+            <button
+              onClick={() => props.handleNavigate(item[0], item[1].type)}
+            >
+              {item[1].name}
+              {item[1].type === 'directory' ? '/' : ''}
+              {item[1].type === 'input' && item[1].localStorageKey ? ` (Current: ${localStorage.getItem(item[1].localStorageKey) || ''})` : ''}
+            </button>
+          </li>
+        )}</For>
+      </ol>
 
       <Show when={props.totalPages() > 1}>
-        <div style={{ 'text-align': 'center', 'margin-top': '10px' }}>
+        <div id="pagination-dots">
           <For each={Array(props.totalPages()).fill(0)}>{(_, i) => (
-            <span
-              style={{
-                display: 'inline-block',
-                width: '8px',
-                height: '8px',
-                'border-radius': '50%',
-                'background-color': props.currentPage() === i() ? '#333' : '#ccc',
-                margin: '0 4px',
-              }}
-            />
+            <span class={`pagination-dot ${props.currentPage() === i() ? 'active' : ''}`} />
           )}</For>
         </div>
       </Show>

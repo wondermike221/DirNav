@@ -9,6 +9,7 @@ interface WindowProps {
   ref?: (el: HTMLDivElement) => void; // Add ref prop
   onClose?: () => void; // New prop for close action
   componentThemeClass?: string; // New prop for component-specific theme class
+  focus?: () => void;
 }
 
 const Window: Component<WindowProps> = (props) => {
@@ -69,9 +70,13 @@ const Window: Component<WindowProps> = (props) => {
       setPosition(newPosition);
       localStorage.setItem('dirnav-window-position', JSON.stringify(newPosition));
     } else if (isResizing()) {
+      const titleBar = windowRef?.querySelector('.title-bar') as HTMLElement;
+      const breadcrumbs = windowRef?.querySelector('#breadcrumbs') as HTMLElement;
+      const minHeight = (titleBar.offsetHeight + breadcrumbs.offsetHeight) * 2;
+
       const newSize = {
         width: Math.max(100, size().width + (e.clientX - offset().x)), // Minimum width
-        height: Math.max(100, size().height + (e.clientY - offset().y)), // Minimum height
+        height: Math.max(minHeight, size().height + (e.clientY - offset().y)), // Minimum height
       };
       setSize(newSize);
       localStorage.setItem('dirnav-window-size', JSON.stringify(newSize));
@@ -112,8 +117,15 @@ const Window: Component<WindowProps> = (props) => {
     localStorage.setItem('dirnav-window-size', JSON.stringify(defaultSize));
   };
 
+  if (props.focus) {
+    props.focus(() => {
+      windowRef?.focus();
+    });
+  }
+
   return (
     <div
+      id="dirnav-window"
       ref={(el) => {
         windowRef = el;
         if (props.ref) props.ref(el);
@@ -127,61 +139,50 @@ const Window: Component<WindowProps> = (props) => {
         width: `${size().width}px`,
         height: `${size().height}px`,
         'z-index': 1000,
+        display: 'flex',
         'flex-direction': 'column',
       }}
       onMouseDown={handleMouseDown}
     >
-      <div
-        class="title-bar"
-      >
-        <div style={{ display: 'flex', 'align-items': 'center' }}>
+      <header class="title-bar">
+        <div class="title-bar-controls">
           <button
+            id="back-button"
             onClick={props.onBack}
             disabled={props.backButtonDisabled}
-            tabindex="-1" // Prevent button from taking focus
-            onMouseDown={(e) => e.preventDefault()} // Prevent focus on click
-            style={{ marginRight: '10px', opacity: props.backButtonDisabled ? 0.5 : 1 }}
+            tabindex="-1"
+            onMouseDown={(e) => e.preventDefault()}
           >
             &#8592;
           </button>
         </div>
-        <div style={{ 'flex-grow': 1, 'text-align': 'center' }}>
+        <div id="window-title" class="title-bar-title">
           {title()[title().length - 1].name}
         </div>
-        <div>
+        <div class="window-controls">
           <button
+            id="resize-button"
             onClick={handleResizeToDefault}
-            tabindex="-1" // Prevent button from taking focus
-            onMouseDown={(e) => e.preventDefault()} // Prevent focus on click
-            style={{ margin: '0 5px' }}
+            tabindex="-1"
+            onMouseDown={(e) => e.preventDefault()}
           >
             &#9723;
           </button>
           <button
+            id="close-button"
             onClick={handleClose}
-            tabindex="-1" // Prevent button from taking focus
-            onMouseDown={(e) => e.preventDefault()} // Prevent focus on click
+            tabindex="-1"
+            onMouseDown={(e) => e.preventDefault()}
           >
             X
           </button>
         </div>
-      </div>
+      </header>
       <Breadcrumbs />
-      <div class="window-content">
+      <main id="window-content" class="window-content">
         {props.children}
-      </div>
-      <div
-        class="resize-handle"
-        style={{
-          position: 'absolute',
-          bottom: '0',
-          right: '0',
-          width: '15px',
-          height: '15px',
-          cursor: 'nwse-resize',
-          'background-color': 'rgba(0,0,0,0.1)',
-        }}
-      />
+      </main>
+      <div id="resize-handle" class="resize-handle" />
     </div>
   );
 };

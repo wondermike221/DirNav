@@ -6,6 +6,7 @@
   "module": "dist/solid-dirnav-ui.es.js",
   "scripts": {
     "build": "vite build",
+    "dev": "vite",
     "test": "playwright test"
   },
   "keywords": [],

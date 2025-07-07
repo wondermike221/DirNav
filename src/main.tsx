@@ -1,172 +1,6 @@
 import { render } from 'solid-js/web';
 import DirnavUI, { createDirTree } from './DirnavUI';
-
-const styleCssContent = `
-/* Basic styles for the window component */
-:root {
-  --bg-color: #f0f2f5;
-  --window-bg: #fff;
-  --window-border: #ccc;
-  --window-shadow: rgba(0,0,0,0.1);
-  --title-bar-bg: #f0f0f0;
-  --text-color: #333;
-  --item-border: #eee;
-  --item-hover-bg: #f9f9f9;
-  --pagination-dot-active: #333;
-  --pagination-dot-inactive: #ccc;
-  --breadcrumb-text-color: #888;
-}
-
-body.dark-mode {
-  --bg-color: #1a1a1a;
-  --window-bg: #2c2c2c;
-  --window-border: #555;
-  --window-shadow: rgba(0,0,0,0.5);
-  --title-bar-bg: #3a3a3a;
-  --text-color: #eee;
-  --item-border: #444;
-  --item-hover-bg: #3c3c3c;
-  --pagination-dot-active: #eee;
-  --pagination-dot-inactive: #777;
-  --breadcrumb-text-color: #aaa;
-}
-
-/* Component-specific dark mode */
-.dirnav-dark-mode {
-  --window-bg: #2c2c2c;
-  --window-border: #555;
-  --window-shadow: rgba(0,0,0,0.5);
-  --title-bar-bg: #3a3a3a;
-  --text-color: #eee;
-  --item-border: #444;
-  --item-hover-bg: #3c3c3c;
-  --pagination-dot-active: #eee;
-  --pagination-dot-inactive: #777;
-  --breadcrumb-text-color: #aaa;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-}
-
-.dirnav-window {
-  border: 1px solid var(--window-border);
-  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  background-color: var(--window-bg);
-  box-shadow: 0 2px 10px var(--window-shadow);
-}
-
-.dirnav-window:focus-within {
-  border-color: dodgerblue;
-  box-shadow: 0 0 0 2px dodgerblue; /* Optional: add a glow effect */
-}
-
-.title-bar {
-  background-color: var(--title-bar-bg);
-  padding: 8px;
-  cursor: grab;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--window-border);
-  user-select: none; /* Prevent text selection during drag */
-}
-
-.title-bar button {
-  background: none;
-  border: 1px solid var(--window-border);
-  padding: 4px 8px;
-  margin-left: 5px;
-  cursor: pointer;
-  border-radius: 3px;
-  color: var(--text-color);
-}
-
-.title-bar button:hover {
-  background-color: var(--item-hover-bg);
-}
-
-.title-bar button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.breadcrumbs-container {
-  padding: 5px 10px;
-  font-size: 0.9em;
-  color: var(--breadcrumb-text-color);
-  border-bottom: 1px solid var(--item-border);
-}
-
-.breadcrumb-item.clickable {
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.window-content {
-  flex: 1;
-  overflow: auto;
-  padding: 10px;
-  background-color: var(--window-bg);
-}
-
-.resize-handle {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 15px;
-  height: 15px;
-  cursor: nwse-resize;
-  background-color: rgba(0,0,0,0.1);
-  border-top-left-radius: 5px;
-}
-
-/* Styles for DirnavUI */
-.dirnav-item {
-  padding: 8px 0;
-  cursor: pointer;
-  border-bottom: 1px solid var(--item-border);
-  display: flex;
-  align-items: center;
-}
-
-.dirnav-item:hover {
-  background-color: var(--item-hover-bg);
-}
-
-.dirnav-item:last-child {
-  border-bottom: none;
-}
-
-.pagination-dots {
-  text-align: center;
-  margin-top: 10px;
-}
-
-.pagination-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--pagination-dot-inactive);
-  margin: 0 4px;
-}
-
-.pagination-dot.active {
-  background-color: var(--pagination-dot-active);
-}
-
-/* Input field in command palette and input mode */
-input[type="text"] {
-  background-color: var(--window-bg);
-  color: var(--text-color);
-  border: 1px solid var(--window-border);
-}
-`;
+import styles from './style.css?inline';
 
 // Function to apply theme based on preference
 const applyTheme = (theme: 'light' | 'dark' | 'system') => {
@@ -212,7 +46,7 @@ const initDirnav = () => {
 
   // Inject the CSS into the shadow DOM
   const style = document.createElement('style');
-  style.textContent = styleCssContent; // Use the imported CSS content
+  style.textContent = styles; // Use the imported CSS content
   shadowRoot.appendChild(style);
 
   const sampleTree = createDirTree({
@@ -278,7 +112,13 @@ const initDirnav = () => {
     "NT": { type: 'input', localStorageKey: 'dirnav-note-input' }, // New NT input leaf node
   });
 
-  render(() => <DirnavUI initialTree={sampleTree} />, mountPoint);
+  render(() => 
+  <>
+  <button on:click={() => applyTheme('light')}>Light mode</button>
+  <button on:click={() => applyTheme('dark')}>Dark mode</button>
+  <button on:click={() => applyTheme('system')}>System Default</button>
+  <DirnavUI initialTree={sampleTree} />
+  </>, mountPoint);
 };
 
 // Initialize the app

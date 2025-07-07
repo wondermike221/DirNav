@@ -1,71 +1,49 @@
 import { test, expect } from '@playwright/test';
-import { Page } from 'playwright';
-import { render } from 'solid-js/web';
-import DirnavUI, { createDirTree } from '../src/DirnavUI';
-import { createSignal } from 'solid-js';
-import '../src/style.css';
+import { DirnavDevPage } from './dirnav-dev-page';
 
-// Helper function to mount the DirnavUI component for testing
-const mountDirnavUIComponent = async (page: Page, initialTree: any) => {
-  await page.setContent(`
-    <div id="root"></div>
-  `);
-
-  await page.evaluate(({
-    initialTree
-  }) => {
-    const { render } = window['SolidWeb'];
-    const DirnavUI = window['DirnavUIComponent'];
-    const { createDirTree } = window['DirnavUIExports'];
-
-    const sampleTree = createDirTree(initialTree);
-
-    render(() => <DirnavUI initialTree={sampleTree} />, document.getElementById('root'));
-  }, { initialTree });
-};
-
-// Expose components and Solid.js utilities globally for Playwright's page.evaluate
 test.beforeEach(async ({ page }) => {
-  await page.exposeFunction('SolidWeb', { render });
-  await page.exposeFunction('DirnavUIComponent', DirnavUI);
-  await page.exposeFunction('DirnavUIExports', { createDirTree });
-  await page.exposeFunction('SolidJs', { createSignal });
+  await page.goto('http://localhost:5173');
 });
 
-const basicTree = {
-  "folder1": {
-    type: 'directory',
-    children: {
-      "file1.txt": { type: 'action', action: () => console.log('file1') },
-    },
-  },
-  "folder2": {
-    type: 'directory',
-    children: {
-      "file2.txt": { type: 'action', action: () => console.log('file2') },
-    },
-  },
-  "action1": { type: 'action', action: () => console.log('action1') },
-};
+test.describe('DirnavUI component', () => {
+  let dirnavDevPage: DirnavDevPage;
 
-test('should navigate into a directory and back', async ({ page }) => {
-  await mountDirnavUIComponent(page, basicTree);
+  test.beforeEach(async ({ page }) => {
+    dirnavDevPage = new DirnavDevPage(page);
+  });
 
-  // Expect to see folder1 and folder2
-  await expect(page.locator('text=folder1/')).toBeVisible();
-  await expect(page.locator('text=folder2/')).toBeVisible();
+  test('should navigate into a directory and back', async ({ page }) => {
+    await page.click('text=folder1/');
+    await expect(page.locator('.breadcrumbs-container')).toHaveText(/~\/folder1/);
+    await page.click('button:has-text("←")');
+    await expect(page.locator('.breadcrumbs-container')).toHaveText('~');
+  });
 
-  // Click on folder1
-  await page.locator('text=folder1/').click();
+  test('should open and close the command palette', async ({ page }) => {
+    await page.keyboard.press('`');
+    await expect(page.locator('input[placeholder="Search..."]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('input[placeholder="Search..."]')).not.toBeVisible();
+  });
 
-  // Expect to see file1.txt and breadcrumbs updated
-  await expect(page.locator('text=file1.txt')).toBeVisible();
-  await expect(page.locator('.breadcrumbs-container')).toHaveText(/Home\/folder1/);
+  test('should filter results in the command palette', async ({ page }) => {
+    await page.keyboard.press('`');
+    await page.fill('input[placeholder="Search..."]', 'file1');
+    await expect(page.locator('div:has-text("file1.txt")')).toBeVisible();
+    await expect(page.locator('div:has-text("file2.txt")')).not.toBeVisible();
+  });
 
-  // Click back button
-  await page.locator('button:has-text("←")').click();
+  test('should handle input nodes', async ({ page }) => {
+    await page.click('text=myInput');
+    await page.fill('input[type="text"]', 'test value');
+    await page.click('button:has-text("Save")');
+    const localStorageValue = await page.evaluate(() => localStorage.getItem('myInputKey'));
+    expect(localStorageValue).toBe('test value');
+  });
 
-  // Expect to be back in the root directory
-  await expect(page.locator('text=folder1/')).toBeVisible();
-  await expect(page.locator('.breadcrumbs-container')).toHaveText(/Home/);
+  test('should handle virtual directories', async ({ page }) => {
+    await page.click('text=virtual-folder');
+    await expect(page.locator('text=Loading...')).toBeVisible();
+    await expect(page.locator('text=file.txt')).toBeVisible();
+  });
 });

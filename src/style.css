@@ -1,64 +1,46 @@
 /* Basic styles for the window component */
 :root {
-  --bg-color: #f0f2f5;
-  --window-bg: #fff;
-  --window-border: #ccc;
-  --window-shadow: rgba(0,0,0,0.1);
-  --title-bar-bg: #f0f0f0;
-  --text-color: #333;
-  --item-border: #eee;
-  --item-hover-bg: #f9f9f9;
-  --pagination-dot-active: #333;
-  --pagination-dot-inactive: #ccc;
-  --breadcrumb-text-color: #888;
-}
-
-body.dark-mode {
-  --bg-color: #1a1a1a;
-  --window-bg: #2c2c2c;
-  --window-border: #555;
-  --window-shadow: rgba(0,0,0,0.5);
-  --title-bar-bg: #3a3a3a;
-  --text-color: #eee;
-  --item-border: #444;
-  --item-hover-bg: #3c3c3c;
-  --pagination-dot-active: #eee;
-  --pagination-dot-inactive: #777;
-  --breadcrumb-text-color: #aaa;
+  --bg-color: hsla(220, 13%, 95%, 1);
+  --window-bg: hsla(0, 0%, 100%, 1);
+  --window-border: hsla(0, 0%, 80%, 1);
+  --window-shadow: hsla(0, 0%, 0%, 0.1);
+  --title-bar-bg: hsla(0, 0%, 94%, 1);
+  --text-color: hsla(0, 0%, 20%, 1);
+  --item-border: hsla(0, 0%, 93%, 1);
+  --item-hover-bg: hsla(0, 0%, 98%, 1);
+  --pagination-dot-active: hsla(0, 0%, 20%, 1);
+  --pagination-dot-inactive: hsla(0, 0%, 80%, 1);
+  --breadcrumb-text-color: hsla(0, 0%, 53%, 1);
+  --resize-handle-bg: hsla(0, 0%, 0%, 0.1);
+  --focus-ring-color: hsla(210, 100%, 56%, 1);
 }
 
 /* Component-specific dark mode */
 .dirnav-dark-mode {
-  --window-bg: #2c2c2c;
-  --window-border: #555;
-  --window-shadow: rgba(0,0,0,0.5);
-  --title-bar-bg: #3a3a3a;
-  --text-color: #eee;
-  --item-border: #444;
-  --item-hover-bg: #3c3c3c;
-  --pagination-dot-active: #eee;
-  --pagination-dot-inactive: #777;
-  --breadcrumb-text-color: #aaa;
+  --window-bg: hsla(0, 0%, 17%, 1);
+  --window-border: hsla(0, 0%, 33%, 1);
+  --window-shadow: hsla(0, 0%, 0%, 0.5);
+  --title-bar-bg: hsla(0, 0%, 23%, 1);
+  --text-color: hsla(0, 0%, 93%, 1);
+  --item-border: hsla(0, 0%, 27%, 1);
+  --item-hover-bg: hsla(0, 0%, 24%, 1);
+  --pagination-dot-active: hsla(0, 0%, 93%, 1);
+  --pagination-dot-inactive: hsla(0, 0%, 47%, 1);
+  --breadcrumb-text-color: hsla(0, 0%, 67%, 1);
+  --resize-handle-bg: hsla(0, 0%, 100%, 0.1);
+  --focus-ring-color: hsla(210, 100%, 56%, 1);
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-}
-
-.dirnav-window {
+#dirnav-window {
   border: 1px solid var(--window-border);
   transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   background-color: var(--window-bg);
   box-shadow: 0 2px 10px var(--window-shadow);
 }
 
-.dirnav-window:focus-within {
-  border-color: dodgerblue;
-  box-shadow: 0 0 0 2px dodgerblue; /* Optional: add a glow effect */
+#dirnav-window:focus-within {
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color); /* Optional: add a glow effect */
 }
 
 .title-bar {
@@ -91,7 +73,7 @@ body {
   opacity: 0.5;
 }
 
-.breadcrumbs-container {
+#breadcrumbs {
   padding: 5px 10px;
   font-size: 0.9em;
   color: var(--breadcrumb-text-color);
@@ -103,42 +85,44 @@ body {
   text-decoration: underline;
 }
 
-.window-content {
+#window-content {
   flex: 1;
   overflow: auto;
   padding: 10px;
   background-color: var(--window-bg);
 }
 
-.resize-handle {
+#resize-handle {
   position: absolute;
   bottom: 0;
   right: 0;
   width: 15px;
   height: 15px;
   cursor: nwse-resize;
-  background-color: rgba(0,0,0,0.1);
+  background-color: var(--resize-handle-bg);
   border-top-left-radius: 5px;
 }
 
 /* Styles for DirnavUI */
-.dirnav-item {
-  padding: 8px 0;
+.main-nav-item button {
+  background: none;
+  border: none;
+  padding: 5px 0;
+  width: 100%;
+  text-align: left;
   cursor: pointer;
-  border-bottom: 1px solid var(--item-border);
-  display: flex;
-  align-items: center;
+  color: var(--text-color);
 }
 
-.dirnav-item:hover {
+.main-nav-item button:hover {
   background-color: var(--item-hover-bg);
 }
 
-.dirnav-item:last-child {
+.main-nav-item:last-child {
   border-bottom: none;
 }
 
-.pagination-dots {
+#pagination-dots {
   text-align: center;
   margin-top: 10px;
 }
@@ -157,8 +141,43 @@ body {
 }
 
 /* Input field in command palette and input mode */
-input[type="text"] {
+#command-palette-input, #input-mode-input {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 10px;
   background-color: var(--window-bg);
   color: var(--text-color);
   border: 1px solid var(--window-border);
+}
+
+#command-palette-results {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--item-border);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.command-palette-result {
+  padding: 5px;
+  cursor: pointer;
+}
+
+.command-palette-result:hover {
+  background-color: var(--item-hover-bg);
+}
+
+.command-palette-result-path {
+  color: var(--breadcrumb-text-color);
+  font-size: 0.8em;
+}
+
+#input-mode-controls {
+  margin-top: 10px;
+  text-align: right;
+}
+
+#input-mode-cancel-button {
+  margin-right: 10px;
 }

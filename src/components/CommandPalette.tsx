@@ -1,4 +1,4 @@
-import { Component, For, Accessor, Setter } from 'solid-js';
+import { Component, For, Show, Accessor, Setter } from 'solid-js';
 
 interface CommandPaletteProps {
   searchTerm: Accessor<string>;

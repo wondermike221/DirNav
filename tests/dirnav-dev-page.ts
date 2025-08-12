@@ -1,56 +1,35 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 
+/**
+ * @deprecated This class is deprecated. Use DirnavTestHelper from test-setup.ts instead.
+ * This file is kept for backward compatibility but should not be used in new tests.
+ */
 export class DirnavDevPage {
     readonly page: Page;
-    readonly window: Locator;
-    readonly titleBar: Locator;
-    readonly title: Locator;
-    readonly resizeHandle: Locator;
-    readonly closeButton: Locator;
-    readonly resetButton: Locator;
-    readonly backButton: Locator;
-    readonly breadcrumbs: Locator;
-    readonly mainContent: Locator;
-    readonly mainNavList: Locator;
-
 
     constructor(page: Page) {
         this.page = page;
-        this.window = page.locator('#dirnav-window');
-        this.titleBar = this.window.locator('header.title-bar');
-        this.title = this.titleBar.locator('#window-title');
-        this.resizeHandle = this.window.locator('#resize-handle');
-        this.closeButton = this.window.locator('#close-button');
-        this.resetButton = this.window.locator('#resize-button');
-        this.backButton = this.window.locator('#back-button');
-        this.breadcrumbs = this.window.locator('nav#breadcrumbs');
-        this.mainContent = this.window.locator('#window-content');
-        this.mainNavList = this.mainContent.locator('ol#main-nav-list');
+        console.warn('DirnavDevPage is deprecated. Use DirnavTestHelper from test-setup.ts instead.');
     }
 
+    // Deprecated methods - kept for compatibility but will not work with shadow DOM
     async dragTo(x: number, y: number) {
-        await this.titleBar.dragTo(this.page.locator('body'), {
-            targetPosition: { x, y },
-        });
+        throw new Error('DirnavDevPage is deprecated. Use DirnavTestHelper from test-setup.ts instead.');
     }
 
     async resizeTo(width: number, height: number) {
-        await this.resizeHandle.dragTo(this.window, {
-            targetPosition: { x: width, y: height },
-        });
+        throw new Error('DirnavDevPage is deprecated. Use DirnavTestHelper from test-setup.ts instead.');
     }
 
     async reset() {
-        await this.resetButton.click();
+        throw new Error('DirnavDevPage is deprecated. Use DirnavTestHelper from test-setup.ts instead.');
     }
 
     async close() {
-        await this.closeButton.click();
+        throw new Error('DirnavDevPage is deprecated. Use DirnavTestHelper from test-setup.ts instead.');
     }
 
     async back() {
-        await this.backButton.click();
+        throw new Error('DirnavDevPage is deprecated. Use DirnavTestHelper from test-setup.ts instead.');
     }
-
-
 }

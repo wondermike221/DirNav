@@ -4,6 +4,7 @@ import { DirNode, DirTree } from './types';
 import { TitleContext } from './TitleContext';
 import CommandPalette from './components/CommandPalette';
 import MainNav from './components/MainNav';
+import { validateDirectoryTreeStrict } from './validation';
 
 interface DirnavUIProps {
   initialTree: DirTree;
@@ -66,10 +67,17 @@ const createDirTree = (data: any): DirTree => {
       tree[key] = { name: key, type: 'action', action: item };
     }
   }
+  
+  // Validate the created tree structure
+  validateDirectoryTreeStrict(tree);
+  
   return tree;
 };
 
 const DirnavUI: Component<DirnavUIProps> = (props) => {
+  // Validate the initial tree on component initialization
+  validateDirectoryTreeStrict(props.initialTree);
+  
   const [currentPath, setCurrentPath] = createSignal<string[]>([]);
   const [currentPage, setCurrentPage] = createSignal(0);
   const [currentDirContent, setCurrentDirContent] = createSignal<DirTree>(props.initialTree); // This holds the content of the currently displayed directory
@@ -89,7 +97,6 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
   let dirnavWindowRef: HTMLDivElement | undefined; // Ref for the Window component's root div
   let inputRef: HTMLInputElement | undefined; // Ref for the input element
   let commandPaletteInputRef: HTMLInputElement | undefined; // Ref for the command palette input
-  let focusWindow: () => void;
 
   const applyComponentTheme = (theme: 'light' | 'dark' | 'system') => {
     setComponentThemePreference(theme);
@@ -339,24 +346,25 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    const isCurrentlyFocused = dirnavWindowRef && dirnavWindowRef.contains(document.activeElement);
-
-    // Always prevent default for backtick to avoid browser interference
-    if (event.key === '`') {
-      event.preventDefault();
-    }
+    // Check if the component is focused, accounting for shadow DOM
+    const isCurrentlyFocused = dirnavWindowRef && (
+      dirnavWindowRef.contains(document.activeElement) || 
+      document.activeElement?.shadowRoot?.activeElement === dirnavWindowRef ||
+      (document.activeElement?.id === 'dirnav-host' && dirnavWindowRef.getRootNode() === document.activeElement.shadowRoot)
+    );
 
     if (event.ctrlKey && event.key === '`') {
+      event.preventDefault();
       if (!isVisible()) {
         setIsVisible(true);
-        setTimeout(() => focusWindow(), 0);
+        setTimeout(() => dirnavWindowRef?.focus(), 0);
       } else if (isCurrentlyFocused) {
         setIsVisible(false);
         dirnavWindowRef?.blur();
       } else {
-        focusWindow();
+        dirnavWindowRef?.focus();
       }
-      return; // Consume the event here to prevent further processing
+      return;
     }
 
     if (!isVisible() || !isCurrentlyFocused) return;
@@ -494,15 +502,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
     }
   };
 
-  createEffect(() => {
-    if (inputMode()) {
-      inputRef?.focus();
-    } else if (commandPaletteMode()) {
-      commandPaletteInputRef?.focus();
-    } else {
-      focusWindow();
-    }
-  });
+  
 
   onMount(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -518,10 +518,9 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
         <Window
           onBack={goBack}
           backButtonDisabled={currentPath().length === 0}
-          ref={dirnavWindowRef} // Assign ref to the Window component
+          ref={el => dirnavWindowRef = el} // Assign ref to the Window component
           onClose={() => setIsVisible(false)} // Pass the close handler
           componentThemeClass={getComponentThemeClass()} // Pass the theme class
-          focus={(f) => focusWindow = f}
         >
           <Show when={isLoading()}>
             <p>Loading...</p>

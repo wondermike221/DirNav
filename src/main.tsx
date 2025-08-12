@@ -1,5 +1,6 @@
 import { render } from 'solid-js/web';
 import DirnavUI, { createDirTree } from './DirnavUI';
+import { validateDirectoryTree, validateDirectoryTreeStrict } from './validation';
 import styles from './style.css?inline';
 
 // Function to apply theme based on preference
@@ -120,6 +121,13 @@ const initDirnav = () => {
   <DirnavUI initialTree={sampleTree} />
   </>, mountPoint);
 };
+
+// Expose validation functions globally for testing
+if (typeof window !== 'undefined') {
+  (window as any).validateDirectoryTree = validateDirectoryTree;
+  (window as any).validateDirectoryTreeStrict = validateDirectoryTreeStrict;
+  (window as any).createDirTree = createDirTree;
+}
 
 // Initialize the app
 initDirnav();

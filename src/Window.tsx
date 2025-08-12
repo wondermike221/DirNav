@@ -9,7 +9,6 @@ interface WindowProps {
   ref?: (el: HTMLDivElement) => void; // Add ref prop
   onClose?: () => void; // New prop for close action
   componentThemeClass?: string; // New prop for component-specific theme class
-  focus?: () => void;
 }
 
 const Window: Component<WindowProps> = (props) => {
@@ -117,11 +116,7 @@ const Window: Component<WindowProps> = (props) => {
     localStorage.setItem('dirnav-window-size', JSON.stringify(defaultSize));
   };
 
-  if (props.focus) {
-    props.focus(() => {
-      windowRef?.focus();
-    });
-  }
+  
 
   return (
     <div

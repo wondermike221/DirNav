@@ -10,3 +10,7 @@ export interface DirNode {
 export interface DirTree {
   [key: string]: DirNode;
 }
+
+export interface FlatDirNode extends DirNode {
+  fullPath: string;
+}

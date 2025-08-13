@@ -1,19 +1,25 @@
 import { Component, createSignal, For, Show, onMount, onCleanup, createEffect } from 'solid-js';
 import Window from './Window';
-import { DirNode, DirTree } from './types';
+import { DirNode, DirTree, FlatDirNode } from './types';
+import { fuzzySearch, SearchResult } from './utils/fuzzySearch';
 import { TitleContext } from './TitleContext';
 import CommandPalette from './components/CommandPalette';
 import MainNav from './components/MainNav';
 import { validateDirectoryTreeStrict } from './validation';
+import { 
+  isElementFocused, 
+  createShadowDOMEventManager, 
+  focusElementInShadowDOM, 
+  blurElementInShadowDOM,
+  handleShadowDOMKeyboardEvent,
+  focusInputInShadowDOM
+} from './utils/shadowDOMUtils';
 
 interface DirnavUIProps {
   initialTree: DirTree;
 }
 
 // Helper to flatten the directory tree for fuzzy searching
-interface FlatDirNode extends DirNode {
-  fullPath: string;
-}
 
 const flattenTree = (tree: DirTree, currentPath: string[] = []): FlatDirNode[] => {
   let flatNodes: FlatDirNode[] = [];
@@ -97,6 +103,9 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
   let dirnavWindowRef: HTMLDivElement | undefined; // Ref for the Window component's root div
   let inputRef: HTMLInputElement | undefined; // Ref for the input element
   let commandPaletteInputRef: HTMLInputElement | undefined; // Ref for the command palette input
+  
+  // Shadow DOM-aware event manager
+  const eventManager = createShadowDOMEventManager();
 
   const applyComponentTheme = (theme: 'light' | 'dark' | 'system') => {
     setComponentThemePreference(theme);
@@ -126,49 +135,25 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
     return [...baseNodes, ...metaNodes];
   };
 
-  const fuzzySearch = (term: string) => {
+  const performFuzzySearch = (term: string): FlatDirNode[] => {
     if (!term) return [];
-    const lowerCaseTerm = term.toLowerCase();
-    const resultsWithScore = allNodes().map(node => {
-      let score = 0;
-      const lowerCaseName = node.name.toLowerCase();
-      const lowerCaseFullPath = node.fullPath.toLowerCase();
-
-      // Prioritize matches in name
-      if (lowerCaseName === lowerCaseTerm) score += 100; // Exact name match
-      else if (lowerCaseName.startsWith(lowerCaseTerm)) score += 50; // Name starts with term
-      else if (lowerCaseName.includes(lowerCaseTerm)) score += 10; // Name includes term
-
-      // Prioritize matches in fullPath for disambiguation
-      if (lowerCaseFullPath.includes(lowerCaseTerm)) score += 5; // Path includes term
-
-      // More sophisticated fuzzy matching (character by character in order)
-      let termIdx = 0;
-      for (let i = 0; i < lowerCaseFullPath.length; i++) {
-        if (termIdx < lowerCaseTerm.length && lowerCaseFullPath[i] === lowerCaseTerm[termIdx]) {
-          score += 1; // Character match
-          termIdx++;
-        }
-      }
-      if (termIdx === lowerCaseTerm.length) score += 20; // All characters found in order
-
-      return { node, score };
-    }).filter(item => item.score > 0) // Only include nodes with a positive score
-      .sort((a, b) => {
-        // Primary sort by score, secondary sort by fullPath length (shorter paths first for same score)
-        if (b.score === a.score) {
-          return a.node.fullPath.length - b.node.fullPath.length;
-        }
-        return b.score - a.score;
-      })
-      .map(item => item.node);
-
-    return resultsWithScore;
+    
+    const searchResults = fuzzySearch(allNodes(), term, {
+      maxResults: 50,
+      minScore: 0.01, // Lower threshold for better compatibility
+      pathWeight: 0.4,
+      nameWeight: 0.6,
+      sequenceWeight: 2.0,
+      exactMatchBonus: 100,
+      prefixMatchBonus: 50,
+    });
+    
+    return searchResults.map(result => result.node);
   };
 
   createEffect(() => {
     if (commandPaletteMode()) {
-      setSearchResults(fuzzySearch(searchTerm()));
+      setSearchResults(performFuzzySearch(searchTerm()));
       setSelectedSearchResultIndex(0);
     }
   });
@@ -267,7 +252,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
       setInputMode(false);
       setInputValue('');
       setInputNodeName(null);
-      dirnavWindowRef?.focus(); // Re-focus the window when exiting input mode via Backspace
+      dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef); // Re-focus the window when exiting input mode via Backspace
       return;
     }
 
@@ -327,6 +312,29 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
     setTitle(breadcrumbs());
   });
 
+  // Handle input focus when entering input mode
+  createEffect(() => {
+    if (inputMode() && inputRef) {
+      setTimeout(() => inputRef && focusInputInShadowDOM(inputRef), 0);
+    }
+  });
+
+  // Handle command palette input focus
+  createEffect(() => {
+    if (commandPaletteMode() && commandPaletteInputRef) {
+      // Use a slightly longer timeout to ensure the DOM is fully rendered
+      setTimeout(() => {
+        if (commandPaletteInputRef) {
+          focusInputInShadowDOM(commandPaletteInputRef);
+          // Clear any existing search term when opening
+          if (searchTerm() === '') {
+            commandPaletteInputRef.value = '';
+          }
+        }
+      }, 10);
+    }
+  });
+
   const handleSaveInput = () => {
     const node = currentDirContent()[inputNodeName()!];
     if (node && node.localStorageKey) {
@@ -335,39 +343,36 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
     setInputMode(false);
     setInputValue('');
     setInputNodeName(null);
-    dirnavWindowRef?.focus();
+    dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
   };
 
   const handleCancelInput = () => {
     setInputMode(false);
     setInputValue('');
     setInputNodeName(null);
-    dirnavWindowRef?.focus();
+    dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    // Check if the component is focused, accounting for shadow DOM
-    const isCurrentlyFocused = dirnavWindowRef && (
-      dirnavWindowRef.contains(document.activeElement) || 
-      document.activeElement?.shadowRoot?.activeElement === dirnavWindowRef ||
-      (document.activeElement?.id === 'dirnav-host' && dirnavWindowRef.getRootNode() === document.activeElement.shadowRoot)
-    );
-
-    if (event.ctrlKey && event.key === '`') {
-      event.preventDefault();
-      if (!isVisible()) {
-        setIsVisible(true);
-        setTimeout(() => dirnavWindowRef?.focus(), 0);
-      } else if (isCurrentlyFocused) {
-        setIsVisible(false);
-        dirnavWindowRef?.blur();
-      } else {
-        dirnavWindowRef?.focus();
+    // Use shadow DOM-aware keyboard event handling
+    if (!dirnavWindowRef) return;
+    
+    handleShadowDOMKeyboardEvent(event, dirnavWindowRef, (event, isCurrentlyFocused) => {
+      if (event.ctrlKey && event.key === '`') {
+        event.preventDefault();
+        if (!isVisible()) {
+          setIsVisible(true);
+          setTimeout(() => dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef), 0);
+        } else if (isCurrentlyFocused) {
+          setIsVisible(false);
+          dirnavWindowRef && blurElementInShadowDOM(dirnavWindowRef);
+        } else {
+          dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
+        }
+        return;
       }
-      return;
-    }
 
-    if (!isVisible() || !isCurrentlyFocused) return;
+      if (!isVisible() || !isCurrentlyFocused) return;
 
     if (commandPaletteMode()) {
       // Only prevent default for keys we explicitly handle in command palette mode
@@ -380,7 +385,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
         } else {
           setCommandPaletteMode(false);
           setIsVisible(false); // Hide everything
-          dirnavWindowRef?.blur();
+          dirnavWindowRef && blurElementInShadowDOM(dirnavWindowRef);
         }
       } else if (event.key === 'Enter') {
         event.preventDefault();
@@ -422,7 +427,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
                   setCurrentPath([]);
                   setCurrentDirContent(props.initialTree);
                   setCurrentPage(0);
-                  dirnavWindowRef?.focus();
+                  dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
                 }
               }, 0); // Small delay to allow UI to render the new directory
 
@@ -437,7 +442,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
           setSelectedSearchResultIndex(0);
           // Focus will be handled by createEffect if inputMode is true, otherwise focus the window
           if (!inputMode()) { // Only focus window if not entering input mode
-            dirnavWindowRef?.focus();
+            dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
           }
         }
       } else if (event.key === 'ArrowUp') {
@@ -482,7 +487,7 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
       setSearchTerm('');
       setSearchResults([]);
       setSelectedSearchResultIndex(0);
-      setTimeout(() => commandPaletteInputRef?.focus(), 0);
+      // Focus will be handled by the createEffect above
     } else if (event.key >= '1' && event.key <= '9') {
       event.preventDefault();
       const index = parseInt(event.key) - 1;
@@ -495,21 +500,24 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
       } else if (items[index]) {
         handleNavigate(items[index][0], items[index][1].type);
       }
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      setIsVisible(false);
-      dirnavWindowRef?.blur();
-    }
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsVisible(false);
+        dirnavWindowRef && blurElementInShadowDOM(dirnavWindowRef);
+      }
+    });
   };
 
   
 
   onMount(() => {
-    document.addEventListener('keydown', handleKeyDown);
+    // Use shadow DOM-aware event management
+    eventManager.addEventListener('document', 'keydown', handleKeyDown);
   });
 
   onCleanup(() => {
-    document.removeEventListener('keydown', handleKeyDown);
+    // Clean up all event listeners
+    eventManager.removeAllEventListeners();
   });
 
   return (
@@ -518,6 +526,24 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
         <Window
           onBack={goBack}
           backButtonDisabled={currentPath().length === 0}
+          commandPaletteMode={commandPaletteMode()}
+          onCommandPalette={() => {
+            if (commandPaletteMode()) {
+              // If command palette is already open, close it
+              setCommandPaletteMode(false);
+              setSearchTerm('');
+              setSearchResults([]);
+              setSelectedSearchResultIndex(0);
+              dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
+            } else {
+              // If command palette is closed, open it
+              setCommandPaletteMode(true);
+              setSearchTerm('');
+              setSearchResults([]);
+              setSelectedSearchResultIndex(0);
+              // Focus will be handled by the createEffect above
+            }
+          }}
           ref={el => dirnavWindowRef = el} // Assign ref to the Window component
           onClose={() => setIsVisible(false)} // Pass the close handler
           componentThemeClass={getComponentThemeClass()} // Pass the theme class
@@ -531,12 +557,11 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
               setSearchTerm={setSearchTerm}
               searchResults={searchResults}
               selectedSearchResultIndex={selectedSearchResultIndex}
-              onSelect={(item) => {
-                // This click handler will need to trigger navigation/action
-                // For now, just log and exit command palette mode
+              onSelect={async (item) => {
                 const selectedNode = item;
                 if (selectedNode) {
                   if (selectedNode.fullPath.startsWith('meta/')) {
+                    // Handle meta actions (theme, etc.)
                     if (selectedNode.action) {
                       selectedNode.action();
                     }
@@ -548,46 +573,64 @@ const DirnavUI: Component<DirnavUIProps> = (props) => {
                     const { node: foundNode, parentContent, parentPath } = findNodeAndParent(props.initialTree, selectedNode.fullPath);
 
                     if (foundNode && parentContent) {
-                      setHistory([]); // Clear history to start fresh from root for command palette navigation
-                      setCurrentPath(parentPath);
-                      setCurrentDirContent(parentContent);
-                      setCurrentPage(0);
-
-                      // If the selected node is an action, execute it
-                      if (foundNode.type === 'action' && foundNode.action) {
-                        foundNode.action();
-                      }
-
-                      // If the selected node is an input, activate input mode
-                      if (foundNode.type === 'input') {
+                      // Clear history to start fresh navigation
+                      setHistory([]);
+                      
+                      if (foundNode.type === 'directory') {
+                        // Navigate TO the directory (not just to its parent)
+                        const fullPath = selectedNode.fullPath.split('/');
+                        setCurrentPath(fullPath);
+                        setCurrentDirContent(foundNode.children || {});
+                        setCurrentPage(0);
+                      } else if (foundNode.type === 'virtual-directory') {
+                        // Handle virtual directories
+                        if (foundNode.onSelect) {
+                          setIsLoading(true);
+                          try {
+                            const result = await Promise.resolve(foundNode.onSelect());
+                            const fullPath = selectedNode.fullPath.split('/');
+                            setCurrentPath(fullPath);
+                            setCurrentDirContent(result);
+                            setCurrentPage(0);
+                          } catch (error) {
+                            console.error('Error loading virtual directory:', error);
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }
+                      } else if (foundNode.type === 'action') {
+                        // Navigate to parent directory and execute action
+                        setCurrentPath(parentPath);
+                        setCurrentDirContent(parentContent);
+                        setCurrentPage(0);
+                        if (foundNode.action) {
+                          foundNode.action();
+                        }
+                      } else if (foundNode.type === 'input') {
+                        // Navigate to parent directory and activate input mode
+                        setCurrentPath(parentPath);
+                        setCurrentDirContent(parentContent);
+                        setCurrentPage(0);
                         setInputMode(true);
                         setInputNodeName(foundNode.name);
                         setInputValue(localStorage.getItem(foundNode.localStorageKey || '') || '');
                       }
-
-                      setTimeout(() => {
-                        // After executing a command palette action, return to the root directory
-                        // unless it's an input node, in which case we stay in input mode
-                        if (!inputMode()) { // Only reset if not entering input mode
-                          setCurrentPath([]);
-                          setCurrentDirContent(props.initialTree);
-                          setCurrentPage(0);
-                          dirnavWindowRef?.focus();
-                        }
-                      }, 0); // Small delay to allow UI to render the new directory
-
                     } else {
                       console.error("Could not find selected node in tree:", selectedNode);
                     }
                   }
 
+                  // Close command palette
                   setCommandPaletteMode(false);
                   setSearchTerm('');
                   setSearchResults([]);
                   setSelectedSearchResultIndex(0);
-                  // Focus will be handled by createEffect if inputMode is true, otherwise focus the window
-                  if (!inputMode()) { // Only focus window if not entering input mode
-                    dirnavWindowRef?.focus();
+                  
+                  // Focus the window unless we're entering input mode
+                  if (!inputMode()) {
+                    setTimeout(() => {
+                      dirnavWindowRef && focusElementInShadowDOM(dirnavWindowRef);
+                    }, 0);
                   }
                 }
               }}

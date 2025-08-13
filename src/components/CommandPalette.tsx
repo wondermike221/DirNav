@@ -25,7 +25,7 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
           <For each={props.searchResults()}>{(item, index) => (
             <li
               id={`command-palette-result-${index()}`}
-              class="command-palette-result"
+              class={`command-palette-result ${index() === props.selectedSearchResultIndex() ? 'selected' : ''}`}
               onClick={() => props.onSelect(item)}
             >
               {item.name} <span class="command-palette-result-path">({item.fullPath})</span>

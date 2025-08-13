@@ -1,7 +1,6 @@
-import { render } from 'solid-js/web';
 import DirnavUI, { createDirTree } from './DirnavUI';
 import { validateDirectoryTree, validateDirectoryTreeStrict } from './validation';
-import styles from './style.css?inline';
+import { createShadowDOMWrapper } from './utils/shadowDOMUtils';
 
 // Function to apply theme based on preference
 const applyTheme = (theme: 'light' | 'dark' | 'system') => {
@@ -32,23 +31,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 });
 
 const initDirnav = () => {
-  // Create a host element for the shadow DOM
-  const host = document.createElement('div');
-  host.id = 'dirnav-host';
-  document.body.appendChild(host);
-
-  // Create a shadow root
-  const shadowRoot = host.attachShadow({ mode: 'open' });
-
-  // Create a mount point for the Solid app inside the shadow DOM
-  const mountPoint = document.createElement('div');
-  mountPoint.id = 'dirnav-root';
-  shadowRoot.appendChild(mountPoint);
-
-  // Inject the CSS into the shadow DOM
-  const style = document.createElement('style');
-  style.textContent = styles; // Use the imported CSS content
-  shadowRoot.appendChild(style);
 
   const sampleTree = createDirTree({
     "home": {
@@ -113,13 +95,24 @@ const initDirnav = () => {
     "NT": { type: 'input', localStorageKey: 'dirnav-note-input' }, // New NT input leaf node
   });
 
-  render(() => 
-  <>
-  <button on:click={() => applyTheme('light')}>Light mode</button>
-  <button on:click={() => applyTheme('dark')}>Dark mode</button>
-  <button on:click={() => applyTheme('system')}>System Default</button>
-  <DirnavUI initialTree={sampleTree} />
-  </>, mountPoint);
+  // Create shadow DOM wrapper with automatic mounting to document body
+  const shadowWrapper = createShadowDOMWrapper(
+    () => (
+      <>
+        <button onClick={() => applyTheme('light')}>Light mode</button>
+        <button onClick={() => applyTheme('dark')}>Dark mode</button>
+        <button onClick={() => applyTheme('system')}>System Default</button>
+        <DirnavUI initialTree={sampleTree} />
+      </>
+    ),
+    {
+      hostId: 'dirnav-host',
+      attachToBody: true
+    }
+  );
+
+  // Store reference for potential cleanup
+  (window as any).dirnavShadowWrapper = shadowWrapper;
 };
 
 // Expose validation functions globally for testing

@@ -148,6 +148,7 @@
   background-color: var(--window-bg);
   color: var(--text-color);
   border: 1px solid var(--window-border);
+  box-sizing: border-box; /* Prevent overflow by including padding and border in width calculation */
 }
 
 #command-palette-results {
@@ -166,6 +167,15 @@
 
 .command-palette-result:hover {
   background-color: var(--item-hover-bg);
+}
+
+.command-palette-result.selected {
+  background-color: var(--focus-ring-color);
+  color: white;
+}
+
+.command-palette-result.selected .command-palette-result-path {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .command-palette-result-path {

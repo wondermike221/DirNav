@@ -1,11 +1,14 @@
 import { Component, createSignal, onMount, onCleanup, Accessor, For } from 'solid-js';
 import Breadcrumbs from './components/Breadcrumbs';
 import { useTitle } from './TitleContext';
+import { createShadowDOMEventManager } from './utils/shadowDOMUtils';
 
 interface WindowProps {
   children?: any;
   onBack?: () => void;
   backButtonDisabled?: boolean;
+  onCommandPalette?: () => void; // New prop for command palette action
+  commandPaletteMode?: boolean; // New prop to indicate if command palette is open
   ref?: (el: HTMLDivElement) => void; // Add ref prop
   onClose?: () => void; // New prop for close action
   componentThemeClass?: string; // New prop for component-specific theme class
@@ -41,6 +44,9 @@ const Window: Component<WindowProps> = (props) => {
   const [offset, setOffset] = createSignal({ x: 0, y: 0 });
 
   let windowRef: HTMLDivElement | undefined;
+  
+  // Shadow DOM-aware event manager
+  const eventManager = createShadowDOMEventManager();
 
   const handleMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return; // Only left click
@@ -92,13 +98,14 @@ const Window: Component<WindowProps> = (props) => {
   };
 
   onMount(() => {
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    // Use shadow DOM-aware event management for global mouse events
+    eventManager.addEventListener('document', 'mousemove', handleMouseMove);
+    eventManager.addEventListener('document', 'mouseup', handleMouseUp);
   });
 
   onCleanup(() => {
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    // Clean up all event listeners
+    eventManager.removeAllEventListeners();
   });
 
   const handleClose = () => {
@@ -141,15 +148,25 @@ const Window: Component<WindowProps> = (props) => {
     >
       <header class="title-bar">
         <div class="title-bar-controls">
-          <button
-            id="back-button"
-            onClick={props.onBack}
-            disabled={props.backButtonDisabled}
-            tabindex="-1"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            &#8592;
-          </button>
+          {props.backButtonDisabled ? (
+            <button
+              id="command-palette-button"
+              onClick={props.onCommandPalette}
+              tabindex="-1"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {props.commandPaletteMode ? '×' : '>'}
+            </button>
+          ) : (
+            <button
+              id="back-button"
+              onClick={props.onBack}
+              tabindex="-1"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              &#8592;
+            </button>
+          )}
         </div>
         <div id="window-title" class="title-bar-title">
           {title()[title().length - 1].name}

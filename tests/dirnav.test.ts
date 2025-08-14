@@ -126,7 +126,7 @@ test.describe('DirnavUI component', () => {
     await helper.clickInShadow('#main-nav-item-4 button');
     
     // Should show loading state
-    await helper.waitForShadowElement('text=Loading...');
+    await helper.waitForShadowElement('text=Loading virtual directory...');
     
     // Wait for content to load (virtual directories have a 1 second delay)
     await helper.waitForShadowElement('text=fetched_item1', 5000);

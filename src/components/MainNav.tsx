@@ -9,35 +9,78 @@ interface MainNavProps {
 
 const MainNav: Component<MainNavProps> = (props) => {
   return (
-    <>
+    <div role="region" aria-label="Directory contents">
       <Show when={props.paginatedItems().length === 0}>
-        <p>This directory is empty.</p>
+        <p role="status" aria-live="polite">This directory is empty.</p>
       </Show>
-      <ol id="main-nav-list">
-        <For each={props.paginatedItems()}>{(item, index) => (
-          <li
-            id={`main-nav-item-${index()}`}
-            class="main-nav-item"
-          >
-            <button
-              onClick={() => props.handleNavigate(item[0], item[1].type)}
+      <ol id="main-nav-list" role="list" aria-label="Directory items">
+        <For each={props.paginatedItems()}>{(item, index) => {
+          const itemType = item[1].type;
+          const itemName = item[1].name;
+          const isDirectory = itemType === 'directory';
+          const isInput = itemType === 'input';
+          const isAction = itemType === 'action';
+          const isVirtualDirectory = itemType === 'virtual-directory';
+          const currentValue = isInput && item[1].localStorageKey ? localStorage.getItem(item[1].localStorageKey) || '' : '';
+          
+          let ariaLabel = '';
+          if (isDirectory) {
+            ariaLabel = `Navigate to ${itemName} directory`;
+          } else if (isInput) {
+            ariaLabel = `Edit ${itemName} input field${currentValue ? `, value: ${currentValue}` : ''}`;
+          } else if (isVirtualDirectory) {
+            ariaLabel = `Load ${itemName} virtual directory`;
+          } else if (isAction) {
+            ariaLabel = `Execute ${itemName} action`;
+          }
+
+          return (
+            <li
+              id={`main-nav-item-${index()}`}
+              class="main-nav-item"
+              role="listitem"
             >
-              {item[1].name}
-              {item[1].type === 'directory' ? '/' : ''}
-              {item[1].type === 'input' && item[1].localStorageKey ? ` (Current: ${localStorage.getItem(item[1].localStorageKey) || ''})` : ''}
-            </button>
-          </li>
-        )}</For>
+              <button
+                onClick={() => props.handleNavigate(item[0], item[1].type)}
+                aria-label={ariaLabel}
+                class={`nav-item-button nav-item-${itemType}`}
+                data-keyboard-shortcut={index() + 1}
+              >
+                <span class="nav-item-content">
+                  <span class="nav-item-name">
+                    {itemName}
+                    {isDirectory && <span aria-hidden="true">/</span>}
+                    {isInput && currentValue && (
+                      <span class="nav-item-value" aria-hidden="true">
+                        : {currentValue}
+                      </span>
+                    )}
+                  </span>
+                </span>
+                <span class="keyboard-shortcut-indicator" aria-hidden="true">
+                  {index() + 1}
+                </span>
+              </button>
+            </li>
+          );
+        }}</For>
       </ol>
 
       <Show when={props.totalPages() > 1}>
-        <div id="pagination-dots">
-          <For each={Array(props.totalPages()).fill(0)}>{(_, i) => (
-            <span class={`pagination-dot ${props.currentPage() === i() ? 'active' : ''}`} />
-          )}</For>
-        </div>
+        <nav id="pagination-dots" aria-label="Page navigation" role="navigation">
+          <div class="pagination-container">
+            <span class="sr-only">Page {props.currentPage() + 1} of {props.totalPages()}</span>
+            <For each={Array(props.totalPages()).fill(0)}>{(_, i) => (
+              <span 
+                class={`pagination-dot ${props.currentPage() === i() ? 'active' : ''}`}
+                aria-label={`Page ${i() + 1}${props.currentPage() === i() ? ' (current)' : ''}`}
+                role="img"
+              />
+            )}</For>
+          </div>
+        </nav>
       </Show>
-    </>
+    </div>
   );
 };
 

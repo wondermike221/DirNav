@@ -1,4 +1,5 @@
 import { FlatDirNode } from '../types';
+import { LRUCache, createMemoizedFunction, performanceMonitor } from './performance';
 
 export interface SearchResult {
   node: FlatDirNode;
@@ -32,9 +33,19 @@ const DEFAULT_OPTIONS: Required<SearchOptions> = {
  */
 export class FuzzySearchEngine {
   private options: Required<SearchOptions>;
+  private scoreCache = new LRUCache<string, number>(1000);
+  private resultCache = new LRUCache<string, SearchResult[]>(200);
+  private memoizedCalculateScore: (node: FlatDirNode, term: string) => number;
 
   constructor(options: SearchOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    
+    // Create memoized version of score calculation
+    this.memoizedCalculateScore = createMemoizedFunction(
+      (node: FlatDirNode, term: string) => this.calculateScoreInternal(node, term),
+      (node, term) => `${node.fullPath}:${term}`,
+      1000
+    );
   }
 
   /**
@@ -44,10 +55,20 @@ export class FuzzySearchEngine {
     if (!term.trim()) return [];
 
     const normalizedTerm = term.toLowerCase().trim();
+    
+    // Check cache first
+    const cacheKey = `${nodes.length}:${normalizedTerm}:${JSON.stringify(this.options)}`;
+    const cached = this.resultCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const endMeasurement = performanceMonitor.start('fuzzy-search');
+    
     const results: SearchResult[] = [];
 
     for (const node of nodes) {
-      const score = this.calculateScore(node, normalizedTerm);
+      const score = this.memoizedCalculateScore(node, normalizedTerm);
       if (score >= this.options.minScore) {
         results.push({
           node,
@@ -65,13 +86,26 @@ export class FuzzySearchEngine {
       return b.score - a.score;
     });
 
-    return results.slice(0, this.options.maxResults);
+    const finalResults = results.slice(0, this.options.maxResults);
+    
+    // Cache the results
+    this.resultCache.set(cacheKey, finalResults);
+    
+    endMeasurement();
+    return finalResults;
   }
 
   /**
    * Calculates relevance score for a node against the search term
    */
   private calculateScore(node: FlatDirNode, term: string): number {
+    return this.memoizedCalculateScore(node, term);
+  }
+
+  /**
+   * Internal score calculation method (memoized)
+   */
+  private calculateScoreInternal(node: FlatDirNode, term: string): number {
     const name = node.name.toLowerCase();
     const fullPath = node.fullPath.toLowerCase();
     const pathSegments = fullPath.split('/');
@@ -215,10 +249,31 @@ export class FuzzySearchEngine {
   }
 
   /**
-   * Updates search options
+   * Updates search options and clears caches
    */
   updateOptions(options: Partial<SearchOptions>): void {
     this.options = { ...this.options, ...options };
+    // Clear caches when options change
+    this.scoreCache.clear();
+    this.resultCache.clear();
+  }
+
+  /**
+   * Clears all caches
+   */
+  clearCache(): void {
+    this.scoreCache.clear();
+    this.resultCache.clear();
+  }
+
+  /**
+   * Gets cache statistics
+   */
+  getCacheStats(): { scoreCache: number; resultCache: number } {
+    return {
+      scoreCache: this.scoreCache.size(),
+      resultCache: this.resultCache.size()
+    };
   }
 }
 

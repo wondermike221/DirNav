@@ -36,44 +36,44 @@ export function createShadowDOMWrapper(
     injectStyles = true,
     customStyles = ''
   } = options;
-  
+
   // Use provided host element or create new one
   const host = hostElement || document.createElement('div');
   if (!hostElement) {
     host.id = hostId;
   }
-  
+
   // Create shadow root with open mode for accessibility
   const shadowRoot = host.attachShadow({ mode: 'open' });
-  
+
   // Create mount point for the SolidJS component
   const mountPoint = document.createElement('div');
   mountPoint.id = 'dirnav-shadow-root';
-  
+
   // Inject CSS styles if requested
   if (injectStyles) {
     const styleElement = document.createElement('style');
     styleElement.textContent = styles + (customStyles ? '\n' + customStyles : '');
     shadowRoot.appendChild(styleElement);
   }
-  
+
   // Append mount point to shadow root
   shadowRoot.appendChild(mountPoint);
-  
+
   // Attach to document body if requested and not already attached
   if (attachToBody && !host.parentNode) {
     document.body.appendChild(host);
   }
-  
+
   // Render the SolidJS component inside the shadow DOM
   const dispose = render(component, mountPoint);
-  
+
   return {
     host,
     shadowRoot,
     mountPoint,
     dispose,
-    
+
     /**
      * Removes the shadow DOM host from the document and disposes the SolidJS app
      */
@@ -83,7 +83,7 @@ export function createShadowDOMWrapper(
         host.parentNode.removeChild(host);
       }
     },
-    
+
     /**
      * Attaches the host to a specific parent element
      */
@@ -127,12 +127,12 @@ export function isElementFocused(element: Element): boolean {
   if (document.activeElement === element) {
     return true;
   }
-  
+
   // Check if element contains the focused element
   if (element.contains(document.activeElement)) {
     return true;
   }
-  
+
   // Check shadow DOM scenarios
   const shadowHost = getShadowHost(element);
   if (shadowHost) {
@@ -140,14 +140,14 @@ export function isElementFocused(element: Element): boolean {
     if (document.activeElement === shadowHost) {
       return true;
     }
-    
+
     // Check if the active element within the shadow DOM is our element or contained by it
     const shadowRoot = getShadowRoot(element);
     if (shadowRoot && shadowRoot.activeElement) {
       return element === shadowRoot.activeElement || element.contains(shadowRoot.activeElement);
     }
   }
-  
+
   return false;
 }
 
@@ -155,53 +155,62 @@ export function isElementFocused(element: Element): boolean {
  * Enhanced event listener management for shadow DOM contexts
  */
 export class ShadowDOMEventManager {
-  private listeners: Map<string, { element: Element | Document, handler: EventListener, options?: AddEventListenerOptions }> = new Map();
-  
+  private listeners: Map<string, { element: Element | Document, type: string, handler: EventListener, options?: AddEventListenerOptions }> = new Map();
+
   /**
    * Add an event listener that works across shadow DOM boundaries
    */
   addEventListener(
-    target: Element | Document | 'document',
+    target: Element | Document | 'document' | 'window',
     type: string,
     handler: EventListener,
     options?: AddEventListenerOptions
   ): string {
-    const actualTarget = target === 'document' ? document : target;
+    let actualTarget: Element | Document | Window;
+    if (target === 'document') {
+      actualTarget = document;
+    } else if (target === 'window') {
+      actualTarget = window;
+    } else {
+      actualTarget = target;
+    }
+
     const listenerId = `${type}_${Date.now()}_${Math.random()}`;
-    
+
     // For shadow DOM elements, we might need to listen on both the element and document
     actualTarget.addEventListener(type, handler, options);
-    
+
     this.listeners.set(listenerId, {
-      element: actualTarget,
+      element: actualTarget as Element | Document,
+      type,
       handler,
       options
     });
-    
+
     return listenerId;
   }
-  
+
   /**
    * Remove a specific event listener
    */
   removeEventListener(listenerId: string): void {
     const listener = this.listeners.get(listenerId);
     if (listener) {
-      listener.element.removeEventListener(listener.handler as any, listener.options);
+      listener.element.removeEventListener(listener.type, listener.handler, listener.options);
       this.listeners.delete(listenerId);
     }
   }
-  
+
   /**
    * Remove all event listeners managed by this instance
    */
   removeAllEventListeners(): void {
-    for (const [id, listener] of this.listeners) {
-      listener.element.removeEventListener(listener.handler as any, listener.options);
+    for (const [, listener] of this.listeners) {
+      listener.element.removeEventListener(listener.type, listener.handler, listener.options);
     }
     this.listeners.clear();
   }
-  
+
   /**
    * Get the appropriate event target for shadow DOM context
    */
@@ -240,7 +249,7 @@ export function handleShadowDOMKeyboardEvent(
 export function focusElementInShadowDOM(element: HTMLElement): void {
   // First try to focus the element directly
   element.focus();
-  
+
   // If the element is in a shadow DOM, we might need additional steps
   const shadowRoot = getShadowRoot(element);
   if (shadowRoot) {
@@ -257,7 +266,7 @@ export function focusElementInShadowDOM(element: HTMLElement): void {
  */
 export function blurElementInShadowDOM(element: HTMLElement): void {
   element.blur();
-  
+
   // If the element is in a shadow DOM, also blur the shadow host if appropriate
   const shadowRoot = getShadowRoot(element);
   if (shadowRoot) {
@@ -274,7 +283,7 @@ export function blurElementInShadowDOM(element: HTMLElement): void {
 export function focusInputInShadowDOM(inputElement: HTMLInputElement): void {
   // For input elements, we need to ensure they can receive keyboard input
   focusElementInShadowDOM(inputElement);
-  
+
   // Additional steps for input elements
   if (inputElement.type === 'text' || inputElement.tagName.toLowerCase() === 'input') {
     // Ensure the input is ready to receive text
@@ -297,16 +306,16 @@ export function createShadowDOMFocusTrap(container: Element): {
 } {
   let isActive = false;
   let previousActiveElement: Element | null = null;
-  
+
   const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-  
+
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!isActive || event.key !== 'Tab') return;
-    
+
     const focusableElements = Array.from(container.querySelectorAll(focusableSelector)) as HTMLElement[];
     const firstFocusable = focusableElements[0];
     const lastFocusable = focusableElements[focusableElements.length - 1];
-    
+
     if (event.shiftKey) {
       // Shift + Tab
       if (document.activeElement === firstFocusable) {
@@ -321,30 +330,30 @@ export function createShadowDOMFocusTrap(container: Element): {
       }
     }
   };
-  
+
   return {
     activate() {
       if (isActive) return;
-      
+
       isActive = true;
       previousActiveElement = document.activeElement;
-      
+
       // Focus first focusable element
       const firstFocusable = container.querySelector(focusableSelector) as HTMLElement;
       if (firstFocusable) {
         focusElementInShadowDOM(firstFocusable);
       }
-      
+
       // Add event listener
       document.addEventListener('keydown', handleKeyDown);
     },
-    
+
     deactivate() {
       if (!isActive) return;
-      
+
       isActive = false;
       document.removeEventListener('keydown', handleKeyDown);
-      
+
       // Restore previous focus
       if (previousActiveElement && previousActiveElement instanceof HTMLElement) {
         focusElementInShadowDOM(previousActiveElement);

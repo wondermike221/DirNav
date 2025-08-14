@@ -1,18 +1,34 @@
 {
   "name": "solid-dirnav-ui",
   "version": "1.0.0",
-  "description": "",
+  "description": "A comprehensive directory navigation UI component built with SolidJS, featuring keyboard shortcuts, command palette, and shadow DOM isolation",
   "main": "dist/solid-dirnav-ui.umd.js",
   "module": "dist/solid-dirnav-ui.es.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "solidjs",
+    "navigation",
+    "ui-component",
+    "directory",
+    "keyboard-shortcuts",
+    "command-palette",
+    "shadow-dom",
+    "typescript"
+  ],
+  "author": "DirNav Contributors",
   "license": "ISC",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
     "solid-js": "^1.9.7"
   },
@@ -22,5 +38,8 @@
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.7"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.9.0"
   }
 }

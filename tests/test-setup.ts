@@ -335,6 +335,82 @@ export class DirnavTestHelper {
     await this.page.keyboard.press('`');
     await this.waitForShadowElement('input[placeholder="Search..."]');
   }
+
+  /**
+   * Gets the current window size
+   */
+  async getWindowSize(): Promise<{ width: number; height: number }> {
+    return await this.page.evaluate(() => {
+      const host = document.querySelector('#dirnav-host');
+      const shadowRoot = host?.shadowRoot;
+      const window = shadowRoot?.querySelector('#dirnav-window') as HTMLElement;
+      if (window) {
+        const rect = window.getBoundingClientRect();
+        return { width: rect.width, height: rect.height };
+      }
+      return { width: 0, height: 0 };
+    });
+  }
+
+  /**
+   * Gets the current window position
+   */
+  async getWindowPosition(): Promise<{ x: number; y: number }> {
+    return await this.page.evaluate(() => {
+      const host = document.querySelector('#dirnav-host');
+      const shadowRoot = host?.shadowRoot;
+      const window = shadowRoot?.querySelector('#dirnav-window') as HTMLElement;
+      if (window) {
+        const rect = window.getBoundingClientRect();
+        return { x: rect.x, y: rect.y };
+      }
+      return { x: 0, y: 0 };
+    });
+  }
+
+  /**
+   * Gets a shadow DOM element for direct interaction
+   */
+  async getShadowElement(selector: string) {
+    const element = await this.page.evaluateHandle((selector) => {
+      const host = document.querySelector('#dirnav-host');
+      const shadowRoot = host?.shadowRoot;
+      return shadowRoot?.querySelector(selector);
+    }, selector);
+    
+    if (!element) {
+      throw new Error(`Element not found: ${selector}`);
+    }
+    
+    return element.asElement()!;
+  }
+
+  /**
+   * Gets multiple shadow DOM elements for direct interaction
+   */
+  async getShadowElements(selector: string) {
+    const elements = await this.page.evaluateHandle((selector) => {
+      const host = document.querySelector('#dirnav-host');
+      const shadowRoot = host?.shadowRoot;
+      return Array.from(shadowRoot?.querySelectorAll(selector) || []);
+    }, selector);
+    
+    const elementHandles = await elements.getProperties();
+    const result = [];
+    
+    for (const [, elementHandle] of elementHandles) {
+      result.push(elementHandle.asElement()!);
+    }
+    
+    return result;
+  }
+
+  /**
+   * Creates a new test helper instance
+   */
+  static async create(page: Page): Promise<DirnavTestHelper> {
+    return await setupTest(page);
+  }
 }
 
 /**

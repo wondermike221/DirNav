@@ -225,3 +225,12 @@ The following functionality has been successfully implemented:
     - Create usage examples and integration guides
     - Add troubleshooting guide for common issues
     - _Requirements: All requirements_
+
+- [x] 10. Ensure the repo is npm compatible
+
+
+
+
+  - Check the requirements for a project to be installable via npm on github
+  - Ensure the main key in package.json points to the appropriate main file
+  - Include build file in remote if necessary or consider CI pipeline to do so.

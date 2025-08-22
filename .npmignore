@@ -1,0 +1,29 @@
+# Source files
+src/
+tests/
+
+# Development files
+.kiro/
+*.config.ts
+*.config.js
+tsconfig*.json
+playwright.config.ts
+
+# Documentation (except README.md)
+API.md
+Design Document.md
+DesignDocv2.md
+EXAMPLES.md
+INTEGRATION_GUIDE.md
+OPTIMIZATION_SUMMARY.md
+TROUBLESHOOTING.md
+
+# Development artifacts
+node_modules/
+.git/
+.gitignore
+index.html
+
+# Build artifacts that shouldn't be published
+*.log
+*.tgz

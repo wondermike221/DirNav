@@ -5,9 +5,36 @@
   "main": "dist/solid-dirnav-ui.umd.js",
   "module": "dist/solid-dirnav-ui.es.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/solid-dirnav-ui.es.js",
+      "require": "./dist/solid-dirnav-ui.umd.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/username/solid-dirnav-ui.git"
+  },
+  "homepage": "https://github.com/username/solid-dirnav-ui#readme",
+  "bugs": {
+    "url": "https://github.com/username/solid-dirnav-ui/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "vite build",
+    "build": "npm run clean && vite build && npm run build:types",
+    "build:lib": "vite build",
+    "build:types": "node -e \"require('fs').copyFileSync('src/types-template.d.ts', 'dist/index.d.ts')\"",
+    "clean": "rimraf dist",
     "dev": "vite",
+    "prepublishOnly": "npm run build",
+    "prepack": "npm run build",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug"
@@ -29,12 +56,11 @@
     "dist",
     "README.md"
   ],
-  "dependencies": {
-    "solid-js": "^1.9.7"
-  },
   "devDependencies": {
     "@playwright/test": "^1.53.2",
     "playwright": "^1.53.2",
+    "rimraf": "^6.0.1",
+    "solid-js": "^1.9.7",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.7"
